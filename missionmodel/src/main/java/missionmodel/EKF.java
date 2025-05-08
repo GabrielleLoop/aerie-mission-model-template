@@ -22,8 +22,8 @@ public class EKF {
         // velocity and position propagation
         Vector3D gravity = new Vector3D(0, 0, -1.625);
         Vector3D accWorld = state.attitude.rotate(accMeas);
-        state.velocity = state.velocity.add(accWorld.add(gravity).scalarMultiply(dt));
-        state.position = state.position.add(state.velocity.scalarMultiply(dt));
+        state.velocity = state.velocity.add(accWorld.add(gravity).scale(dt));
+        state.position = state.position.add(state.velocity.scale(dt));
 
         // FIXMEEEEE: Construct F matrix (13x13), propagate covariance
     }
