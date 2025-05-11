@@ -18,16 +18,27 @@ public class EKF {
         // quat propagation
         Quaternion dq = QuaternionUtils.integrateOmega(state.attitude, omega, dt);
         state.attitude = dq.normalize();
-
+    
         // velocity and position propagation
         Vector3D gravity = new Vector3D(0, 0, -1.625);
         Vector3D accWorld = state.attitude.rotate(accMeas);
         state.velocity = state.velocity.add(accWorld.add(gravity).scale(dt));
         state.position = state.position.add(state.velocity.scale(dt));
-
-        // FIXMEEEEE: Construct F matrix (13x13), propagate covariance
+    
+        // construct F matrix (13x13)
+        RealMatrix F = MatrixUtils.createRealMatrix(13, 13);
+        F.setSubMatrix(MatrixUtils.createRealIdentityMatrix(3).scalarMultiply(1.0).getData(), 0, 3); // d(position)/d(velocity) = I
+        RealMatrix Rwb = state.attitude.asRotationMatrix();  // d(velocity)/d(attitude) = -R*[a]_x
+        RealMatrix accSkew = MatrixUtils.skewSymmetric(accMeas);
+        F.setSubMatrix(Rwb.multiply(accSkew).scale(-1.0).getData(), 3, 6);
+        F.setSubMatrix(MatrixUtils.createRealIdentityMatrix(3).scalarMultiply(-1.0).getData(), 6, 9); // d(velocity)/d(gyroBias) = 0 and d(attitude)/d(gyro) = -I
+        RealMatrix I = MatrixUtils.createRealIdentityMatrix(13); // Discrete state transition: Φ ≈ I + F*dt
+        RealMatrix Phi = I.add(F.scale(dt));
+    
+        // Covariance propagation
+        state.covariance = Phi.multiply(state.covariance).multiply(Phi.transpose()).add(Q);
     }
-
+    
     public void update(Vector3D posMeas, Quaternion attMeas) {
         // residual (measurements)
         Vector3D posResidual = posMeas.subtract(state.position);
