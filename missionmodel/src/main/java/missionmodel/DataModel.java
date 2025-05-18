@@ -15,6 +15,7 @@ public class DataModel {
     public MutableResource<Discrete<Vector3D>> Position;
     public MutableResource<Discrete<Vector3D>> Velocity;
     public MutableResource<Discrete<Quaternion>> Attitude;
+    public MutableResource<Discrete<Quaternion>> DesiredAttitude;
     public MutableResource<Discrete<Vector3D>> AngularVelocity;
     public MutableResource<Discrete<Vector3D>> AngularAcceleration;
     public MutableResource<Discrete<Vector3D>> SurfaceCoordinates;
@@ -27,6 +28,7 @@ public class DataModel {
         Position = resource(discrete(Vector3D.zero()));
         Velocity = resource(discrete(Vector3D.zero()));
         Attitude = resource(discrete(Quaternion.identity()));
+        DesiredAttitude = resource(discrete(Quaternion.identity()));
         AngularVelocity = resource(discrete(Vector3D.zero()));
         AngularAcceleration = resource(discrete(Vector3D.zero()));
         SurfaceCoordinates = resource(discrete(Vector3D.zero()));
@@ -38,6 +40,7 @@ public class DataModel {
         registrar.discrete("Position", Position, new Vector3DMapper());
         registrar.discrete("Velocity", Velocity, new Vector3DMapper());
         registrar.discrete("Attitude", Attitude, new QuaternionMapper());
+        registrar.discrete("DesiredAttitude", DesiredAttitude, new QuaternionMapper());
         registrar.discrete("AngularVelocity", AngularVelocity, new Vector3DMapper());
         registrar.discrete("AngularAcceleration", AngularAcceleration, new Vector3DMapper());
         registrar.discrete("SurfaceCoordinates", SurfaceCoordinates, new Vector3DMapper());

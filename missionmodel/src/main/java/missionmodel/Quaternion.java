@@ -17,13 +17,14 @@ public class Quaternion {
     }
 
     // normalize a given quaternion
-    public void normalize() {
+    public Quaternion normalize() {
         double norm = Math.sqrt(x*x + y*y + z*z + w*w);
         if (norm == 0) throw new ArithmeticException("Cannot normalize zero quaternion.");
         x /= norm;
         y /= norm;
         z /= norm;
         w /= norm;
+        return new Quaternion(x, y, z, w);
     }
 
     // conjugate given quaternion
@@ -36,6 +37,11 @@ public class Quaternion {
         double normSq = x*x + y*y + z*z + w*w;
         if (normSq == 0) throw new ArithmeticException("Zero quaternion has no inverse.");
         return new Quaternion(-x/normSq, -y/normSq, -z/normSq, w/normSq);
+    }
+
+    // multiply by a scalar
+    public Quaternion scale(double s) {
+        return new Quaternion(s*x, s*y, s*z, s*w);
     }
 
     // quaternion multiplication (this*other)
@@ -73,6 +79,18 @@ public class Quaternion {
         return new double[] { rotated.x, rotated.y, rotated.z };
     }
 
+    // compute quaternion skew matrix
+    public double[][] Xi() {
+        double[][] Xi =
+        {
+            {w, -z, y},
+            {z, w, -x},
+            {-y, x, w},
+            {-x, -y, -z}
+        };
+    return Xi;
+    }
+
     // convert to Euler angles (yaw-pitch-roll, zyx order)
     public double[] toEulerAngles() {
         double sinr_cosp = 2*(w*x + y*z);
@@ -87,6 +105,16 @@ public class Quaternion {
         double yaw = Math.atan2(siny_cosp, cosy_cosp);
 
         return new double[] {yaw, pitch, roll};
+    }
+
+    // get scalar part
+    public double getScalar() {
+        return w;
+    }
+
+    // get vector part
+    public Vector3D getVector() {
+        return new Vector3D(x, y, z);
     }
 
     // turn into a string for printing

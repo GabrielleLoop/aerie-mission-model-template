@@ -79,6 +79,22 @@ public class RealMatrix {
         return result;
     }
 
+    public Vector3D multiply(Vector3D vector) {
+        if (this.cols != 3) {
+            throw new IllegalArgumentException("Matrix needs 3 columns to multiply with a Vector3D.");
+        }
+        
+        if (this.rows != 3) {
+            throw new IllegalArgumentException("Matrix needs 3 rows to produce a Vector3D result.");
+        }
+        
+        double resultX = this.data[0][0]*vector.x + this.data[0][1]*vector.y + this.data[0][2]*vector.z;              
+        double resultY = this.data[1][0]*vector.x + this.data[1][1]*vector.y + this.data[1][2]*vector.z;             
+        double resultZ = this.data[2][0]*vector.x + this.data[2][1]*vector.y + this.data[2][2]*vector.z;
+        
+        return new Vector3D(resultX, resultY, resultZ);
+    }
+
     // multiply this matrix by a scalar
     public RealMatrix scale(double scalar) {
         RealMatrix result = new RealMatrix(rows, cols);
@@ -86,6 +102,70 @@ public class RealMatrix {
             for (int j = 0; j < cols; j++)
                 result.data[i][j] = scalar*this.data[i][j];
         return result;
+    }
+
+    // invert this matrix (gonna use Gauss-Jordan elimination, lmk if this needs to be changed)
+    public RealMatrix invert() {
+        if (rows != cols) {
+            throw new IllegalArgumentException("Matrix must be square to have an inverse");
+        }
+        
+        int n = rows;
+        RealMatrix augmented = new RealMatrix(n, 2*n);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                augmented.set(i, j, this.data[i][j]);
+            }
+            augmented.set(i, i + n, 1.0);
+        }
+        
+        for (int i = 0; i < n; i++) {
+            int pivotRow = i;
+            double pivotValue = Math.abs(augmented.get(i, i));
+            
+            for (int j = i + 1; j < n; j++) {
+                double absValue = Math.abs(augmented.get(j, i));
+                if (absValue > pivotValue) {
+                    pivotRow = j;
+                    pivotValue = absValue;
+                }
+            }
+            
+            if (pivotValue < 1e-10) {
+                throw new ArithmeticException("Matrix is singular and can't be inverted");
+            }
+            
+            if (pivotRow != i) {
+                for (int j = 0; j < 2*n; j++) {
+                    double temp = augmented.get(i, j);
+                    augmented.set(i, j, augmented.get(pivotRow, j));
+                    augmented.set(pivotRow, j, temp);
+                }
+            }
+            
+            double pivot = augmented.get(i, i);
+            for (int j = 0; j < 2*n; j++) {
+                augmented.set(i, j, augmented.get(i, j) / pivot);
+            }
+            
+            for (int j = 0; j < n; j++) {
+                if (j != i) {
+                    double factor = augmented.get(j, i);
+                    for (int k = 0; k < 2*n; k++) {
+                        augmented.set(j, k, augmented.get(j, k) - factor*augmented.get(i, k));
+                    }
+                }
+            }
+        }
+        
+        RealMatrix inverse = new RealMatrix(n, n);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                inverse.set(i, j, augmented.get(i, j + n));
+            }
+        }
+        
+        return inverse;
     }
 
     // convert the matrix to a 2D array

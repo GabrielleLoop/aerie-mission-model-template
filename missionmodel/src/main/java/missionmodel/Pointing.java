@@ -4,131 +4,109 @@ import gov.nasa.jpl.aerie.contrib.streamline.modeling.discrete.DiscreteEffects;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.ActivityType;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.Export.Parameter;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.Export.Validation;
-
-
 import gov.nasa.jpl.aerie.merlin.protocol.types.Duration;
 
 import static gov.nasa.jpl.aerie.merlin.framework.ModelActions.delay;
 import static gov.nasa.jpl.aerie.merlin.protocol.types.Duration.SECONDS;
 
-import javax.xml.crypto.Data;
-
 @ActivityType("Pointing")
-public class Pointing {
+public final class Pointing {
 
+    // --- SECTION A: PARAMETERS ---
+    // proportional gain
     @Parameter
-    public Vector3D AngularMomentum; // kg*m^2/s
+    public double kp = 0.1; // Nm/rad
 
+    // derivative gain
     @Parameter
-    public Quaternion Attitude; // quaternion
+    public double kd = 0.05; // Nm/rad/s
 
+    // time for maneuver
+    @Parameter
+    public double t_f; // s
 
+    // --- SECTION B: VALIDATION ---
 
-
-    /**
-
-        [ SECTION B : VALIDATION ]
-
-    @Validation(" ${Error message} ")
-    @Validation.Subject(" ${Parameter 1} ")
-    public boolean ${Method Name (usually something like validationParameterName)}() {
-        return ${Parameter 1} ...               Some sort of way to quantify success (less than, less than equal to, etc)
+    @Validation("Proportional gain must be non-negative.")
+    @Validation.Subject("kp")
+    public boolean validateKp() {
+        return kp >= 0;
     }
-    
-    
-     */
 
+    @Validation("Derivative gain must be non-negative.")
+    @Validation.Subject("kd")
+    public boolean validateKd() {
+        return kd >= 0;
+    }
 
+    @Validation("Final time must be positive.")
+    @Validation.Subject("t_f")
+    public boolean validateTf() {
+        return t_f > 0;
+    }
 
-
-        /**
-        
-            [ SECTION (if including ComputedAttributes) ]
-
-        @AutoValueMapper.Record
-        record ComputedAttributes (
-            ${Data Type} ${Variable}
-            ${Data Type} ${Variable}
-        )
-        
-        
-        */
-
-
+    // --- SECTION C: EFFECT MODEL ---
 
     @ActivityType.EffectModel
-    // (if applicable, add Duration here for Controlled or Parameterized Duration)
-    public void run(Mission model) { // if including ComputedAttributes, change to [ public ComputedAttributes run(Mission mission) ]
+    // I GENUINELY HAVE NO IDEA HOW TO DO THIS DURATION SINCE IT'S CALCULATED INSIDE THE ACTIVITY???? GABBY HLP
+    public void run(Mission model) {
+        // retrieve initial state from the model
+        Quaternion q_0 = model.Attitude.get();
+        Quaternion q_des = model.DesiredAttitude.get();
+        Vector3D omega_0 = model.AngularVelocity.get();
+        RealMatrix I_c = model.InertiaMatrix;
 
+        // compute delta quaternion (difference between desired and current attitude)
+        Quaternion q = q_0;
+        Vector3D omega = omega_0;
+        Quaternion del_q = computeDeltaQ(q, q_des);
 
-        /**
-        
+        // time span for integration
+        // uhhhh let's assume bang-bang control for now so tf = 4*theta*I/Lmax
+        double angle = 2*Math.acos(del_q.getScalar());
+        t_f = angle*18.7; // if specs of the satellite change, this needs to be recalculated
+        int steps = 200;
+        double dt = t_f/steps;
 
+        // integration (idk exactly how this is done in Aerie so change it however you need gabby but this is what goes in the integral)
+        for (int i = 0; i < steps; i++) {
+            // control torque
+            Vector3D torque = computeControlTorque(del_q, omega, I_c);
 
-            [ SECTION C: ACTUAL EFFECT ON RESOURCES ]
+            // take derivatives
+            Vector3D omega_dot = I_c.invert().multiply(torque.subtract(omega.cross(I_c.multiply(omega))));
+            Quaternion q_dot = computeQDot(q, omega);
+            Quaternion del_q_dot = computeDeltaQ(q_dot, q_des);
 
+            // INTEGRATE MEEEEEEEEEE, omega_dot, q_dot, del_q_dot need to be updated to become the next omega, q, and del_q
+        }
 
-            DISCRETEEFFECTS:
-            Boolean Resource Methods:
-            - DiscreteEffects.turnOn(...) – Set a Boolean resource to true.
-            - DiscreteEffects.turnOff(...) – Set a Boolean resource to false.
-            - DiscreteEffects.toggle(...) – Flip a Boolean resource between true and false.
-            Integer Resource Methods:
-            - DiscreteEffects.increment(...) – Increase an Integer resource by 1.
-            - DiscreteEffects.increment(..., int amount) – Increase an Integer resource by a specific amount.
-            - DiscreteEffects.decrement(...) – Decrease an Integer resource by 1.
-            - DiscreteEffects.decrement(..., int amount) – Decrease an Integer resource by a specific amount.
-            - DiscreteEffects.using(..., Runnable action) – Temporarily decrement an Integer resource by 1 while an action runs.
-            Double Resource Methods:
-            - DiscreteEffects.increase(...) – Add a specific amount to a Double resource.
-            - DiscreteEffects.decrease(...) – Subtract a specific amount from a Double resource.
-            - DiscreteEffects.consume(...) – Subtract a specific amount from a Double resource (same as decrease).
-            - DiscreteEffects.restore(...) – Add a specific amount to a Double resource (same as increase).
-            - DiscreteEffects.using(..., double amount, Runnable) – Temporarily decrease a Double resource by a given amount during an action.
-            List Resource Methods:
-            - DiscreteEffects.add(...) – Append an element to a List resource.
-            - DiscreteEffects.remove(...) – Remove and return the first element from a List resource (if present)
-            General Method for all types:
-            - DiscreteEffects.set(...) – Set a resource to a specific value (works with any type).
-        
+        // update model resources with final state
+        DiscreteEffects.set(model.Attitude, q);
+        DiscreteEffects.set(model.DesiredAttitude, new Quaternion(0, 0, 0, 1));
+        DiscreteEffects.set(model.AngularVelocity, omega);
+    }
 
-            TIME RELATED METHODS: (static methods from ModelActions class)
-            - delay(duration) - delay the currently running activity for the given duration
-            - waitUntil(condition) - delay currently running activity until condition becomes true
-                - for both... they will observe effects caused by other activities over the intervening timespan on resumption
-            
+    // fonctions
 
-            ACTION RELATED METHODS: (provided by ActivityActions class)
-            - spawn(mission, activity) - spawn a new activity as child of current activity at the current point in time and the
-                    parent activity will continue uninterrupted
-            - call(mission, activity) - spawn a new activity as child of current activity at the current point in time and the
-                    parent activity will halt until child activity is completed
-            
+    private Quaternion computeDeltaQ(Quaternion q, Quaternion q_des) {
+        return q_des.cross_multiply(q.conjugate()).normalize();
+    }
 
+    private Vector3D computeControlTorque(Quaternion del_q, Vector3D omega, RealMatrix I_c) {
+        Vector3D del_q_vec = new Vector3D(del_q.x, del_q.y, del_q.z);
+        Vector3D proportional = del_q_vec.scale(-kp);
+        Vector3D derivative = omega.scale(-kd);
+        Vector3D cross = omega.cross(I_c.multiply(omega));
+        return I_c.multiply(proportional.add(derivative)).add(cross);
+    }
 
-
-
-         */
-
-
-
-
-        /**
-        
-            If including ComputedAttributes/logging output...
-
-        return new ComputedAttributes(${Variable 1}, ${Variable 2})
-        
-        
-         */
-
-
-
+    private Quaternion computeQDot(Quaternion q, Vector3D omega) {
+        double[][] Xi = q.Xi();
+        double nx = 0.5*(Xi[0][0]*omega.x + Xi[0][1]*omega.y + Xi[0][2]*omega.z);
+        double ny = 0.5*(Xi[1][0]*omega.x + Xi[1][1]*omega.y + Xi[1][2]*omega.z);
+        double nz = 0.5*(Xi[2][0]*omega.x + Xi[2][1]*omega.y + Xi[2][2]*omega.z);
+        double nw = 0.5*(Xi[3][0]*omega.x + Xi[3][0]*omega.y + Xi[3][0]*omega.z);
+        return new Quaternion(nx, ny, nz, nw);
     }
 }
-
-
-
-// HUZZAH YOU'RE DONE
-
-
