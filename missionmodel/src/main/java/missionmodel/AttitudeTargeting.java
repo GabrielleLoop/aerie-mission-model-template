@@ -13,57 +13,54 @@ import static java.lang.Math;
 public class AttitudeTargeting {
 
     // --- SECTION A: PARAMETERS ---
+    // axis of bodyodyodyodyodyodyody
     @Parameter
-    public Vector3D deltaV = new Vector3D(0.0, 0.0, 1.0); // m/s
+    public Vector3D v2 = new Vector3D(0.0, 0.0, 1.0); // m/s
+
+    @FixedDuration
+    public static final Duration TOTAL_DURATION = Duration.ofSeconds(0.001); // just gonna set it really small since it shouldn't take any time
 
     // --- SECTION C: EFFECT MODEL ---
     @ActivityType.EffectModel
     public void run(Mission model) {
 
-        // normalize delta-v vector (v1)
-        Vector3D v1 = deltaV.normalize();
-
-        // v2 is body z-axis in body frame
-        Vector3D v2 = new Vector3D(0.0, 0.0, 1.0);
+        // get delta v vector from resources and norm
+        Vector3D deltaV = model.deltaV.get();
+        deltaV.normalize();
 
         // cross product: axis = v1 × v2
-        Vector3D axis = v1.cross(v2);
+        Vector3D axis = deltaV.cross(v2);
         double axisNorm = axis.norm();
 
         double qx, qy, qz, qw;
 
         if (axisNorm < 1e-6) {
-            // Handle edge case
-            double dot = v1x * v2x + v1y * v2y + v1z * v2z;
+            // check for parallel
+            double dot = deltaV.x*v2.x + deltaV.y*v2.y + deltaV.z*v2.z;
+            // if they're already in the same direction, return identity quaternion
             if (dot > 0) {
                 qx = qy = qz = 0.0;
                 qw = 1.0;
+            // if they're in opposite directions, return 180-deg rotation around x-axis
             } else {
-                qx = 1.0; qy = 0.0; qz = 0.0; qw = 0.0; // 180-deg around x-axis
+                qx = 1.0; qy = 0.0; qz = 0.0; qw = 0.0;
             }
         } else {
-            // Normalize axis
-            axisX /= axisNorm;
-            axisY /= axisNorm;
-            axisZ /= axisNorm;
+            // normalize axis
+            axis.normalize();
 
-            // Compute angle
-            double dot = v1x * v2x + v1y * v2y + v1z * v2z;
-            double theta = acos(dot);
+            // compute angle between vectors
+            double dot = deltaV.x*v2.x + deltaV.y*v2.y + deltaV.z*v2.z;
+            double theta = Math.acos(dot);
 
-            // Quaternion: q = [axis * sin(θ/2), cos(θ/2)]
-            double halfTheta = theta / 2.0;
-            double sinHalfTheta = sin(halfTheta);
-            qx = axisX * sinHalfTheta;
-            qy = axisY * sinHalfTheta;
-            qz = axisZ * sinHalfTheta;
-            qw = cos(halfTheta);
+            // form quaternion
+            qx = axis.x*Math.sin(theta/2.0);
+            qy = axis.y*Math.sin(theta/2.0);
+            qz = axis.z*Math.sin(theta/2.0);
+            qw = Math.cos(theta/2.0);
         }
-
-        // Output for debug (or use in effect model)
-        System.out.printf("Quaternion: [%.4f, %.4f, %.4f, %.4f]%n", qx, qy, qz, qw);
         
-        // Here you might set this quaternion into a model state or log it
-        // DiscreteEffects.set(model.someAttitudeResource, new Quaternion(qx, qy, qz, qw));
+        // output!
+        DiscreteEffects.set(model.DesiredAttitude, new Quaternion(qx, qy, qz, qw));
     }
 }
