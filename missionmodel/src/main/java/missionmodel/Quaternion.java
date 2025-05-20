@@ -72,11 +72,10 @@ public class Quaternion {
     }
 
     // rotate another 3-vector using the quaternion
-    public double[] rotateVector(double[] v) {
-        if (v.length != 3) throw new IllegalArgumentException("Input vector must have 3 elements.");
-        Quaternion vQuat = new Quaternion(v[0], v[1], v[2], 0.0);
+    public Vector3D rotateVector(Vector3D v) {
+        Quaternion vQuat = new Quaternion(v.x, v.y, v.z, 0.0);
         Quaternion rotated = this.multiply(vQuat).multiply(this.inverse());
-        return new double[] { rotated.x, rotated.y, rotated.z };
+        return new Vector3D(rotated.x, rotated.y, rotated.z);
     }
 
     // compute quaternion skew matrix
@@ -106,6 +105,25 @@ public class Quaternion {
 
         return new double[] {yaw, pitch, roll};
     }
+
+    // turn the quaternion into equivalent rotation matrix
+    public RealMatrix asRotationMatrix() {
+        Quaternion q = this.normalize();
+        double[][] matrix = new double[3][3];
+        
+        matrix[0][0] = 1 - 2*q.y*q.y - 2*q.z*q.z;
+        matrix[0][1] = 2*q.x*q.y - 2*q.w*q.z;
+        matrix[0][2] = 2*q.x*q.z + 2*q.w*q.y;
+        matrix[1][0] = 2*q.x*q.y + 2*q.w*q.z;
+        matrix[1][1] = 1 - 2*q.x*q.x - 2*q.z*q.z;
+        matrix[1][2] = 2*q.y*q.z - 2*q.w*q.x;
+        matrix[2][0] = 2*q.x*q.z - 2*q.w*q.y;
+        matrix[2][1] = 2*q.y*q.z + 2*q.w*q.x;
+        matrix[2][2] = 1 - 2*q.x*q.x - 2*q.y*q.y;
+        
+        return new RealMatrix(matrix);
+    }
+
 
     // get scalar part
     public double getScalar() {

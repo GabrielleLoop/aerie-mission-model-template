@@ -3,16 +3,16 @@ package missionmodel;
 public class RealMatrix {
     private final int rows;
     private final int cols;
-    private final double[][] data; // double double this this, double double that that
+    private final double[][] data;
 
-    // boa constructor
+    // construct empty matrix with given rows and columns
     public RealMatrix(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
         this.data = new double[rows][cols];
     }
 
-    // fill this matrix with the given values
+    // construct matrix from 2D array
     public RealMatrix(double[][] input) {
         this.rows = input.length;
         this.cols = input[0].length;
@@ -24,7 +24,7 @@ public class RealMatrix {
         }
     }
 
-    // identity (the equivalent of eye)
+    // construct identity matrix
     public static RealMatrix identity(int size) {
         RealMatrix I = new RealMatrix(size, size);
         for (int i = 0; i < size; i++) {
@@ -33,7 +33,7 @@ public class RealMatrix {
         return I;
     }
 
-    // transpose rows and columns
+    // transpose
     public RealMatrix transpose() {
         RealMatrix result = new RealMatrix(cols, rows);
         for (int i = 0; i < rows; i++)
@@ -42,10 +42,10 @@ public class RealMatrix {
         return result;
     }
 
-    // add another matrix to this matrix
+    // add matrices
     public RealMatrix add(RealMatrix B) {
         if (rows != B.rows || cols != B.cols)
-            throw new IllegalArgumentException("Matrix dimensions must agree.");
+            throw new IllegalArgumentException("Matrix dimensions must agree for addition.");
         RealMatrix result = new RealMatrix(rows, cols);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
@@ -53,10 +53,10 @@ public class RealMatrix {
         return result;
     }
 
-    // subtract another matrix from this matrix
+    // subtract matrices
     public RealMatrix subtract(RealMatrix B) {
         if (rows != B.rows || cols != B.cols)
-            throw new IllegalArgumentException("Matrix dimensions must agree.");
+            throw new IllegalArgumentException("Matrix dimensions must agree for subtraction.");
         RealMatrix result = new RealMatrix(rows, cols);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
@@ -64,21 +64,22 @@ public class RealMatrix {
         return result;
     }
 
-    // multiply this matrix by another matrix
+    // multiply matrices
     public RealMatrix multiply(RealMatrix B) {
         if (this.cols != B.rows)
-            throw new IllegalArgumentException("Inner dimensions must match.");
+            throw new IllegalArgumentException("Inner dimensions must match for multiplication.");
         RealMatrix result = new RealMatrix(this.rows, B.cols);
         for (int i = 0; i < this.rows; i++) {
             for (int j = 0; j < B.cols; j++) {
                 for (int k = 0; k < this.cols; k++) {
-                    result.data[i][j] += this.data[i][k]*B.data[k][j];
+                    result.data[i][j] += this.data[i][k] * B.data[k][j];
                 }
             }
         }
         return result;
     }
 
+    // multiply matrix by 3d vector
     public Vector3D multiply(Vector3D vector) {
         if (this.cols != 3) {
             throw new IllegalArgumentException("Matrix needs 3 columns to multiply with a Vector3D.");
@@ -95,16 +96,16 @@ public class RealMatrix {
         return new Vector3D(resultX, resultY, resultZ);
     }
 
-    // multiply this matrix by a scalar
+    // multiply matrix by scalar
     public RealMatrix scale(double scalar) {
         RealMatrix result = new RealMatrix(rows, cols);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                result.data[i][j] = scalar*this.data[i][j];
+                result.data[i][j] = scalar * this.data[i][j];
         return result;
     }
 
-    // invert this matrix (gonna use Gauss-Jordan elimination, lmk if this needs to be changed)
+    // matrix inversion (I'm using gauss-jordan elimination but this can be changed if needed)
     public RealMatrix invert() {
         if (rows != cols) {
             throw new IllegalArgumentException("Matrix must be square to have an inverse");
@@ -168,28 +169,47 @@ public class RealMatrix {
         return inverse;
     }
 
-    // convert the matrix to a 2D array
+    // get data as 2d array
     public double[][] toArray() {
         return data;
     }
 
-    // get a specific matrix element
+    // get specific element
     public double get(int row, int col) {
         return data[row][col];
     }
 
-    // set a specific matrix element
+    // set specific element
     public void set(int row, int col, double value) {
         data[row][col] = value;
     }
 
-    // get the number of rows
-    public int getRowCount() { return rows; }
+    // get number of rows
+    public int getRowCount() {
+        return rows;
+    }
 
-    // get the number of columns
-    public int getColCount() { return cols; }
+    // get number of columns
+    public int getColCount() {
+        return cols;
+    }
 
-    // override toString so it prints nicely
+    // set a submatrix
+    public void setSubMatrix(RealMatrix subMatrix, int startRow, int startCol) {
+        int subRows = subMatrix.getRowCount();
+        int subCols = subMatrix.getColCount();
+        
+        for (int i = 0; i < subRows; i++) {
+            for (int j = 0; j < subCols; j++) {
+                if (startRow + i < rows && startCol + j < cols) {
+                    this.data[startRow + i][startCol + j] = subMatrix.get(i, j);
+                }
+            }
+        }
+    }
+
+    // turn it into a string (just in case we need for UI)
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (double[] row : data) {

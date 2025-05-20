@@ -7,7 +7,6 @@ import gov.nasa.jpl.aerie.contrib.serialization.mappers.DoubleValueMapper;
 
 import static gov.nasa.jpl.aerie.contrib.streamline.core.MutableResource.resource;
 import static gov.nasa.jpl.aerie.contrib.streamline.modeling.discrete.Discrete.discrete;
-import sun.security.ec.point.ExtendedHomogeneousPoint;
 
 public class DataModel {
 
@@ -22,6 +21,8 @@ public class DataModel {
     public MutableResource<Discrete<Double>> PointingAccuracy;
     public MutableResource<Discrete<Vector3D>> SunPosition;
     public MutableResource<Discrete<RealMatrix>> InertiaMatrix;
+    public MutableResource<Discrete<Vector3D>> GyroBias;
+    public MutableResource<Discrete<RealMatrix>> Covariance;
 
     public DataModel(Registrar registrar) {
         AngularMomentum = resource(discrete(Vector3D.zero()));
@@ -35,6 +36,8 @@ public class DataModel {
         PointingAccuracy = resource(discrete(0.0));
         SunPosition = resource(discrete(Vector3D.zero()));
         InertiaMatrix = resource(discrete(RealMatrix.identity(3)));
+        GyroBias = resource(discrete(Vector3D.zero()));
+        Covariance = resource(discrete(RealMatrix.identity(3)));
 
         registrar.discrete("AngularMomentum", AngularMomentum, new Vector3DMapper());
         registrar.discrete("Position", Position, new Vector3DMapper());
@@ -47,5 +50,7 @@ public class DataModel {
         registrar.discrete("PointingAccuracy", PointingAccuracy, new DoubleValueMapper());
         registrar.discrete("SunPosition", SunPosition, new Vector3DMapper());
         registrar.discrete("InertiaMatrix", InertiaMatrix, new RealMatrixMapper());
+        registrar.discrete("GyroBias", GyroBias, new Vector3DMapper());
+        registrar.discrete("Covariance", Covariance, new RealMatrixMapper());
     }
 }
